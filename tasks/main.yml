@@ -1,0 +1,46 @@
+---
+
+- name: Get Groups on System
+  ansible.builtin.getent:
+    database: group
+
+
+- name: "Create specific user group with same ID as user"
+  ansible.builtin.group:
+    name: "{{ item.value.group | default(item.key) }}"
+    state: "present"
+    gid: "{{ item.value.uid | default(omit) }}"
+  loop: "{{ users | dict2items }}"
+  when: item.value.state | default('present') != 'absent'
+
+- name: "Create/delete and configure Users or remove them"
+  ansible.builtin.user:
+    name: "{{ item.key }}"
+    comment: "{{ item.value.comment | default(omit) }}"
+    group: "{{ item.value.group | default(item.key) }}"
+    groups: "{{ item.value.groups | intersect(ansible_facts.getent_group) if item.value.groups is defined else item.value.groups | default(omit) }}"
+    uid: "{{ item.value.uid | default(omit) }}"
+    state: "{{ item.value.state | default('present') }}"
+    shell: "{{ item.value.shell | default('/bin/bash') }}"
+    create_home: "{{ item.value.create_home | default(omit) }}"
+    password: "{{ item.value.password | default(omit) }}"
+    append: true
+    remove: true
+  loop: "{{ users | dict2items }}"
+  when: users | length > 0
+
+- name: "Add public keys to authorized_hosts"
+  ansible.posix.authorized_key:
+    user: "{{ item.0.key }}"
+    state: "present"
+    key: "{{ item.1 }}"
+  loop: "{{ users | dict2items | subelements('value.ssh_keys', skip_missing=True) }}"
+  when: item.0.value.state | default('present') != 'absent'
+
+- name: "Delete specific user groups"
+  ansible.builtin.group:
+    name: "{{ item.value.group | default(item.key) }}"
+    state: "absent"
+    gid: "{{ item.value.uid | default(omit) }}"
+  loop: "{{ users | dict2items }}"
+  when: item.value.state | default('present') == "absent"
