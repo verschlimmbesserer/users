@@ -1,3 +1,4 @@
 ---
 # defaults file for users
-users: []
+user_groups: {}
+users: {}

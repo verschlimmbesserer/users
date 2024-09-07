@@ -4,6 +4,16 @@
   ansible.builtin.getent:
     database: group
 
+- name: Create Groups
+  ansible.builtin.group:
+    name: "{{ item.key }}"
+    state: "{{ item.state | default('present') }}"
+    gid: "{{ item.gid | default(omit) }}"
+    system: "{{ item.system | default(false) }}"
+    non_unique: "{{ item.non_unique | default(false) }}"
+    local: "{{ item.local | default(false) }}"
+    force: "{{ item.force | default(false) }}"
+  loop: "{{ user_groups | dict2items }}"
 
 - name: "Create specific user group with same ID as user"
   ansible.builtin.group:
